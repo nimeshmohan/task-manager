@@ -7,7 +7,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Trello,
+  CheckSquare,
 } from 'lucide-react'
 import { useBoardStore } from '@/store/boardStore'
 import { useAuthStore } from '@/store/authStore'
@@ -68,10 +68,10 @@ export function Sidebar() {
         <div className="flex min-w-[240px] flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-700">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-              <Trello size={18} className="text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#FF6200' }}>
+              <CheckSquare size={18} className="text-white" />
             </div>
-            <span className="font-bold text-lg">Mini Trello</span>
+            <span className="font-bold text-lg">TaskFlow</span>
           </div>
 
           {/* Nav */}
