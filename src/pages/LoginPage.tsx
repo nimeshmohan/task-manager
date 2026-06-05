@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Trello, Mail, Lock, User } from 'lucide-react'
+import { CheckSquare, Mail, Lock, User } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAsGuest } from '@/firebase/auth'
 import { cn } from '@/lib/cn'
@@ -37,11 +37,11 @@ export function LoginPage() {
       >
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg">
-            <Trello size={28} className="text-white" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-lg" style={{ backgroundColor: '#FF6200' }}>
+            <CheckSquare size={28} className="text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white">Mini Trello</h1>
+            <h1 className="text-2xl font-bold text-white">TaskFlow</h1>
             <p className="text-sm text-gray-400">Organize your work</p>
           </div>
         </div>
