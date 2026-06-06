@@ -115,7 +115,7 @@ export function DashboardPage() {
               transition={{ delay: i * 0.05 }}
             >
               <Link
-                to={`/board/${board.id}`}
+                to={`/app/board/${board.id}`}
                 onClick={() => setActiveBoardId(board.id)}
                 className="group relative flex h-36 flex-col justify-between overflow-hidden rounded-2xl p-5 shadow-card hover:shadow-card-hover transition-shadow"
                 style={{ backgroundColor: board.color }}

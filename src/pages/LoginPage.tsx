@@ -19,7 +19,7 @@ export function LoginPage() {
     setLoading(true)
     try {
       await fn()
-      navigate('/dashboard')
+      navigate('/app/dashboard')
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Authentication failed'
       toast.error(msg)

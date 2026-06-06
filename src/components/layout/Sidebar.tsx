@@ -33,7 +33,7 @@ export function Sidebar() {
       const board = await createBoard(user.uid, newBoardTitle.trim(), color)
       setBoards([...boards, board])
       setActiveBoardId(board.id)
-      navigate(`/board/${board.id}`)
+      navigate(`/app/board/${board.id}`)
       setNewBoardTitle('')
       setCreating(false)
       toast.success('Board created')
@@ -77,7 +77,7 @@ export function Sidebar() {
           {/* Nav */}
           <nav className="flex-1 overflow-y-auto p-3">
             <Link
-              to="/dashboard"
+              to="/app/dashboard"
               className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors mb-1"
             >
               <LayoutDashboard size={16} />
@@ -139,7 +139,7 @@ export function Sidebar() {
                 {boards.map((board) => (
                   <Link
                     key={board.id}
-                    to={`/board/${board.id}`}
+                    to={`/app/board/${board.id}`}
                     onClick={() => setActiveBoardId(board.id)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
