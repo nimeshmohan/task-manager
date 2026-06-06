@@ -1,6 +1,7 @@
-import { Menu, Moon, Sun, Search } from 'lucide-react'
+import { Menu, Moon, Sun, Search, Share2 } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
 import { useBoardStore } from '@/store/boardStore'
+import toast from 'react-hot-toast'
 
 export function Navbar() {
   const { darkMode, toggleDarkMode, setSidebarOpen, sidebarOpen, searchQuery, setSearchQuery } =
@@ -38,6 +39,20 @@ export function Navbar() {
             className="rounded-lg border border-gray-200 bg-gray-50 py-1.5 pl-9 pr-4 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
           />
         </div>
+
+        {board && (
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(board.id)
+              toast.success('Board ID copied — share it to invite others!')
+            }}
+            title="Copy board ID to share"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <Share2 size={15} />
+            <span className="hidden sm:inline">Share</span>
+          </button>
+        )}
 
         <button
           onClick={toggleDarkMode}

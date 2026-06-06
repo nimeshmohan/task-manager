@@ -186,6 +186,21 @@ export async function deleteTask(columnId: string, taskId: string) {
   await batch.commit()
 }
 
+// ── Collaboration ──────────────────────────────────────
+export async function joinBoard(boardId: string, userId: string): Promise<Board | null> {
+  const ref = doc(db, 'boards', boardId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return null
+  const board = { id: snap.id, ...snap.data() } as Board
+  if (board.memberIds.includes(userId)) return board
+  await updateDoc(ref, { memberIds: arrayUnion(userId) })
+  return { ...board, memberIds: [...board.memberIds, userId] }
+}
+
+export async function leaveBoard(boardId: string, userId: string) {
+  await updateDoc(doc(db, 'boards', boardId), { memberIds: arrayRemove(userId) })
+}
+
 export async function moveTaskBetweenColumns(
   taskId: string,
   fromColumnId: string,

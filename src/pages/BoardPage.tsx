@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -11,7 +11,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { arrayMove, SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { Column } from '@/components/column/Column'
 import { AddColumn } from '@/components/column/AddColumn'
 import { TaskCard } from '@/components/task/TaskCard'
@@ -27,9 +27,10 @@ import type { Task } from '@/types'
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>()
-  const { boards, columns, setActiveBoardId, getActiveBoard, reorderColumnsLocally, moveTaskLocally } = useBoardStore()
+  const { boards, columns, setActiveBoardId, getActiveBoard, reorderColumnsLocally, moveTaskLocally, updateColumnLocally } = useBoardStore()
   const [activeTask, setActiveTask] = useState<Task | null>(null)
   const [loading, setLoading] = useState(true)
+  const dragStartColumnId = useRef<string | null>(null)
 
   useBoards()
   useBoardData(boardId ?? '')
@@ -55,7 +56,9 @@ export function BoardPage() {
   function onDragStart(event: DragStartEvent) {
     const { active } = event
     if (active.data.current?.type === 'task') {
-      setActiveTask(active.data.current.task as Task)
+      const task = active.data.current.task as Task
+      setActiveTask(task)
+      dragStartColumnId.current = task.columnId
     }
   }
 
@@ -64,33 +67,46 @@ export function BoardPage() {
     if (!over || active.id === over.id) return
     if (active.data.current?.type !== 'task') return
 
-    const task = active.data.current.task as Task
-    const overIsTask = over.data.current?.type === 'task'
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const cols = useBoardStore.getState().columns
 
-    const fromCol = useBoardStore.getState().columns.find((c) => c.cardOrder.includes(String(active.id)))
+    const fromCol = cols.find((c) => c.cardOrder.includes(activeId))
     if (!fromCol) return
 
-    if (overIsTask) {
-      const toTask = over.data.current?.task as Task
-      const toCol = useBoardStore.getState().columns.find((c) => c.id === toTask.columnId)
-      if (!toCol) return
-      if (fromCol.id === toCol.id) return
+    const isOverTask = over.data.current?.type === 'task'
 
-      const fromOrder = fromCol.cardOrder.filter((id) => id !== task.id)
-      const toOrder = [...toCol.cardOrder]
-      const overIdx = toOrder.indexOf(toTask.id)
-      toOrder.splice(overIdx, 0, task.id)
-      moveTaskLocally(task.id, fromCol.id, toCol.id, fromOrder, toOrder)
-      setActiveTask({ ...task, columnId: toCol.id })
+    if (isOverTask) {
+      // Find toCol by cardOrder lookup — avoids stale over.data.current.task.columnId
+      const toCol = cols.find((c) => c.cardOrder.includes(overId))
+      if (!toCol) return
+
+      if (fromCol.id === toCol.id) {
+        // Same column: reorder
+        const oldIdx = fromCol.cardOrder.indexOf(activeId)
+        const newIdx = fromCol.cardOrder.indexOf(overId)
+        if (oldIdx === newIdx) return
+        const newOrder = arrayMove(fromCol.cardOrder, oldIdx, newIdx)
+        updateColumnLocally(fromCol.id, { cardOrder: newOrder })
+      } else {
+        // Cross-column
+        const fromOrder = fromCol.cardOrder.filter((id) => id !== activeId)
+        const toOrder = [...toCol.cardOrder]
+        const overIdx = toOrder.indexOf(overId)
+        toOrder.splice(overIdx >= 0 ? overIdx : toOrder.length, 0, activeId)
+        moveTaskLocally(activeId, fromCol.id, toCol.id, fromOrder, toOrder)
+        setActiveTask((prev) => (prev ? { ...prev, columnId: toCol.id } : prev))
+      }
     } else {
-      const toColId = String(over.id)
-      const toCol = useBoardStore.getState().columns.find((c) => c.id === toColId)
+      // Dropped on column body (empty area)
+      const toColId = overId
+      const toCol = cols.find((c) => c.id === toColId)
       if (!toCol || fromCol.id === toCol.id) return
 
-      const fromOrder = fromCol.cardOrder.filter((id) => id !== task.id)
-      const toOrder = [...toCol.cardOrder, task.id]
-      moveTaskLocally(task.id, fromCol.id, toCol.id, fromOrder, toOrder)
-      setActiveTask({ ...task, columnId: toCol.id })
+      const fromOrder = fromCol.cardOrder.filter((id) => id !== activeId)
+      const toOrder = [...toCol.cardOrder, activeId]
+      moveTaskLocally(activeId, fromCol.id, toCol.id, fromOrder, toOrder)
+      setActiveTask((prev) => (prev ? { ...prev, columnId: toCol.id } : prev))
     }
   }
 
@@ -114,20 +130,22 @@ export function BoardPage() {
       return
     }
 
-    // Task drop — persist current state
+    // Task drop — persist final store state
     if (active.data.current?.type === 'task') {
-      const currentTask = useBoardStore.getState().tasks.find((t) => t.id === active.id)
+      const currentState = useBoardStore.getState()
+      const currentTask = currentState.tasks.find((t) => t.id === String(active.id))
       if (!currentTask) return
 
-      const currentCol = useBoardStore.getState().columns.find((c) => c.cardOrder.includes(String(active.id)))
+      const currentCol = currentState.columns.find((c) => c.cardOrder.includes(String(active.id)))
       if (!currentCol) return
 
-      // Find where the task originally was before drag started
-      const originalColumnId = active.data.current.task.columnId as string
+      const originalColumnId = dragStartColumnId.current
+      dragStartColumnId.current = null
 
-      if (originalColumnId !== currentTask.columnId) {
-        const fromColState = useBoardStore.getState().columns.find((c) => c.id === originalColumnId)
-        const toColState = useBoardStore.getState().columns.find((c) => c.id === currentTask.columnId)
+      if (originalColumnId && originalColumnId !== currentTask.columnId) {
+        // Moved to different column
+        const fromColState = currentState.columns.find((c) => c.id === originalColumnId)
+        const toColState = currentState.columns.find((c) => c.id === currentTask.columnId)
         if (fromColState && toColState) {
           await moveTaskBetweenColumns(
             currentTask.id,
@@ -138,6 +156,7 @@ export function BoardPage() {
           )
         }
       } else {
+        // Same column reorder (or no move)
         await updateCardOrder(currentCol.id, currentCol.cardOrder)
       }
     }

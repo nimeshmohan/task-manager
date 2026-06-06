@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, Trash2, LayoutGrid } from 'lucide-react'
+import { Plus, Trash2, LayoutGrid, Users } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { useBoardStore } from '@/store/boardStore'
 import { useAuthStore } from '@/store/authStore'
 import { useBoards } from '@/hooks/useBoards'
-import { createBoard, deleteBoard } from '@/firebase/firestore'
+import { createBoard, deleteBoard, joinBoard } from '@/firebase/firestore'
 import { BOARD_COLORS } from '@/utils/priority'
 import toast from 'react-hot-toast'
 
@@ -21,6 +21,9 @@ export function DashboardPage() {
   const [newTitle, setNewTitle] = useState('')
   const [selectedColor, setSelectedColor] = useState(BOARD_COLORS[0])
   const [creating, setCreating] = useState(false)
+  const [joinModalOpen, setJoinModalOpen] = useState(false)
+  const [joinBoardId, setJoinBoardId] = useState('')
+  const [joining, setJoining] = useState(false)
 
   async function handleCreate() {
     if (!newTitle.trim() || !user) return
@@ -34,6 +37,29 @@ export function DashboardPage() {
       toast.error('Failed to create board')
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function handleJoin() {
+    if (!joinBoardId.trim() || !user) return
+    setJoining(true)
+    try {
+      const board = await joinBoard(joinBoardId.trim(), user.uid)
+      if (!board) {
+        toast.error('Board not found — check the ID')
+        return
+      }
+      const alreadyMember = useBoardStore.getState().boards.some((b) => b.id === board.id)
+      if (!alreadyMember) {
+        useBoardStore.setState((s) => ({ boards: [...s.boards, board] }))
+      }
+      toast.success(`Joined "${board.title}"!`)
+      setJoinBoardId('')
+      setJoinModalOpen(false)
+    } catch {
+      toast.error('Failed to join board')
+    } finally {
+      setJoining(false)
     }
   }
 
@@ -58,9 +84,14 @@ export function DashboardPage() {
             {boards.length} board{boards.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus size={16} /> New Board
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setJoinModalOpen(true)}>
+            <Users size={16} /> Join Board
+          </Button>
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus size={16} /> New Board
+          </Button>
+        </div>
       </div>
 
       {boards.length === 0 ? (
@@ -107,6 +138,28 @@ export function DashboardPage() {
           ))}
         </div>
       )}
+
+      <Modal open={joinModalOpen} onClose={() => { setJoinModalOpen(false); setJoinBoardId('') }} title="Join a Board" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Ask a board owner for their Board ID (found via the Share button inside a board).
+          </p>
+          <Input
+            label="Board ID"
+            value={joinBoardId}
+            onChange={(e) => setJoinBoardId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            placeholder="Paste board ID here"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setJoinModalOpen(false); setJoinBoardId('') }}>Cancel</Button>
+            <Button onClick={handleJoin} disabled={joining || !joinBoardId.trim()}>
+              {joining ? 'Joining...' : 'Join Board'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Board" size="sm">
         <div className="space-y-4">
